@@ -362,3 +362,5 @@ compile_commands.json
 CTestTestfile.cmake
 _deps
 
+# CMake + Visual Studio stuff
+out/
