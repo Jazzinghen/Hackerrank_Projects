@@ -56,8 +56,12 @@ void bfs(const Point& pacman_start, const Point& food_loc, const std::vector<std
     std::vector<bool>  visited(row * col);
     std::vector<Point> precedent(row * col);
 
-    // The DFS stack
+    // The BFS queue
     std::queue<Point> visit_queue;
+
+    // Add the starting point as "visited"
+    size_t flat_start = (pacman_start.first * col) + pacman_start.second;
+    visited[flat_start] = true;
 
     visit_queue.push(pacman_start);
     bool food_found = false;
