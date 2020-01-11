@@ -11,42 +11,65 @@
 // Second: column
 typedef std::pair<size_t, size_t> Point;
 
+// AStar step definition
+// Step: Matrix location
+// Cost: Manhattan grid distance + distance
+// Start_Dist: Distance from start
+struct AStar_Step {
+    Point step;
+    size_t cost;
+    size_t start_dist;
+};
+
+size_t compute_cost(const Point& start, const Point& food) {
+    size_t cost = std::abs(int64_t(food.first) - int64_t(start.first));
+    cost += std::abs(int64_t(food.second) - int64_t(start.second));
+
+    return cost;
+}
+
 // This adds a new location to the stack and updates all the rest of the structures,
 // visited and previous (for backtrack)
-void add_location(const Point& start, const Point& next_location, const std::vector<std::string>& grid, std::queue<Point>& v_stack, std::vector<Point>& p_matrix, std::vector<bool>& vis_matrix)
+template<typename QueueT>
+void add_location(const AStar_Step& start, const Point& next_location, const std::vector<std::string>& grid, QueueT& v_queue, std::vector<Point>& p_matrix, std::vector<bool>& vis_matrix)
 {
     size_t flat_pos = (grid[0].size() * next_location.first) + next_location.second;
+    size_t target_distance = start.start_dist + 1;
+    size_t target_cost = compute_cost(start.step, next_location) + target_distance;
     if ((!vis_matrix[flat_pos]) && (grid[next_location.first][next_location.second] != '%')) {
-        p_matrix[flat_pos] = start;
+        p_matrix[flat_pos] = start.step;
         vis_matrix[flat_pos] = true;
-        v_stack.push({ next_location.first, next_location.second });
+        AStar_Step target = { next_location, target_cost, target_distance };
+        v_queue.push(target);
     }
 }
 
 // Seems like a pretty good function to split
-void update_visit_stack(const Point& start, const std::vector<std::string>& grid, std::queue<Point>& v_stack, std::vector<Point>& p_matrix, std::vector<bool> & vis_matrix)
+// I HAD TO TEMPLATE THIS THING TO PASS THE PRIORITY QUEUE!
+template<typename QueueT>
+void update_visit_stack(const AStar_Step& start, const std::vector<std::string>& grid, QueueT& v_queue, std::vector<Point>& p_matrix, std::vector<bool> & vis_matrix)
 {
-    size_t row = start.first;
-    size_t col = start.second;
+    size_t row = start.step.first;
+    size_t col = start.step.second;
 
     size_t max_row = grid.size();
     size_t max_col = grid[0].size();
     if (row > 0) {
-        add_location(start, { row - 1, col }, grid, v_stack, p_matrix, vis_matrix);
+        add_location(start, { row - 1, col }, grid, v_queue, p_matrix, vis_matrix);
     }
     if (col > 0) {
-        add_location(start, { row, col - 1 }, grid, v_stack, p_matrix, vis_matrix);
+        add_location(start, { row, col - 1 }, grid, v_queue, p_matrix, vis_matrix);
     }
     if (col < (max_col - 1)) {
-        add_location(start, { row, col + 1 }, grid, v_stack, p_matrix, vis_matrix);
+        add_location(start, { row, col + 1 }, grid, v_queue, p_matrix, vis_matrix);
     }
     if (row < (max_row - 1) ) {
-        add_location(start, { row + 1, col }, grid, v_stack, p_matrix, vis_matrix);
+        add_location(start, { row + 1, col }, grid, v_queue, p_matrix, vis_matrix);
     }
 }
 
 
-void bfs(const Point& pacman_start, const Point& food_loc, const std::vector<std::string>& grid) {
+void astar(const Point& pacman_start, const Point& food_loc, const std::vector<std::string>& grid) {
     
     std::vector<Point> visit_path;
 
@@ -56,22 +79,32 @@ void bfs(const Point& pacman_start, const Point& food_loc, const std::vector<std
     std::vector<bool>  visited(row * col);
     std::vector<Point> precedent(row * col);
 
+    // Comparison function to use for the priority queue
+    auto astar_cmp = [](const AStar_Step& lhs, const AStar_Step& rhs)->bool {
+        return lhs.cost > rhs.cost;
+    };
+
     // The BFS queue
-    std::queue<Point> visit_queue;
+    std::priority_queue<AStar_Step, std::vector<AStar_Step>, decltype(astar_cmp)> visit_queue(astar_cmp);
 
     // Add the starting point as "visited"
     size_t flat_start = (pacman_start.first * col) + pacman_start.second;
     visited[flat_start] = true;
 
-    visit_queue.push(pacman_start);
+    size_t direct_distance = compute_cost(pacman_start, food_loc);
+    AStar_Step start = { pacman_start, direct_distance, 0 };
+    visit_queue.push(start);
     bool food_found = false;
-    
-    while (!visit_queue.empty() && !food_found) {
-        Point current_loc = visit_queue.front();
-        visit_queue.pop();
-        visit_path.push_back(current_loc);
 
-        char current_char = grid[current_loc.first][current_loc.second];
+    while (!visit_queue.empty() && !food_found) {
+        AStar_Step current_loc = visit_queue.top();
+        visit_queue.pop();
+
+        Point loc = current_loc.step;
+
+        visit_path.push_back(loc);
+
+        char current_char = grid[loc.first][loc.second];
         if (current_char == '.') {
             food_found = true;
         } else {
@@ -98,16 +131,7 @@ void bfs(const Point& pacman_start, const Point& food_loc, const std::vector<std
     std::cout << std::endl;
 #endif // PRINT_VISITED
 
-
-    // First print all the visited locations
-    size_t visited_nodes = visit_path.size();
-    std::cout << visited_nodes << std::endl;
-    for (const auto& coords : visit_path) {
-        std::cout << coords.first << " " << coords.second << std::endl;
-    }
-
-
-    // Then find the path we followed to get here and add it to a stack
+    // Find the path we followed to get here and add it to a stack
     std::stack<Point> travelled_path;
     travelled_path.push(food_loc);
 
@@ -146,7 +170,7 @@ int main(void) {
         grid.push_back(s);
     }
 
-    bfs({ pacman_r, pacman_c }, { food_r, food_c }, grid);
+    astar({ pacman_r, pacman_c }, { food_r, food_c }, grid);
 
     return 0;
 }
