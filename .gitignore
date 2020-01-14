@@ -365,3 +365,6 @@ _deps
 # CMake + Visual Studio stuff
 out/
 build/
+
+# VSCode stuff
+.vscode/
