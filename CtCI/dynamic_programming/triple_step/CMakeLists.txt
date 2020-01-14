@@ -1,9 +1,9 @@
-﻿# CMakeList.txt : Top-level CMake project file, do global configuration
-# and include sub-projects here.
+﻿# CMakeList.txt : CMake project for Triple Step, include source and define
+# project specific logic here.
 #
 cmake_minimum_required (VERSION 3.8)
 
-project ("triple_step")
+# Add source to this project's executable.
+add_executable (triple_step "triple_step.cpp" "triple_step.h")
 
-# Include sub-projects.
-add_subdirectory ("triple_step")
+# TODO: Add tests and install targets if needed.
