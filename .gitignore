@@ -368,3 +368,6 @@ build/
 
 # VSCode stuff
 .vscode/
+
+# CLion
+.idea/
